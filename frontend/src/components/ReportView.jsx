@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Download, Copy, Check, ExternalLink, FileText, FileType } from "lucide-react";
+import { Download, Copy, Check, ExternalLink, FileText, FileType, Lightbulb, Clock, Database, Zap } from "lucide-react";
 import { reportToMarkdown, reportToText, downloadFile } from "../lib/export";
 
 function CitationBadge({ ids, references, onJump }) {
@@ -15,7 +15,7 @@ function CitationBadge({ ids, references, onJump }) {
             key={i}
             onClick={() => onJump && onJump(id)}
             title={ref ? `${ref.title} — ${ref.url}` : `Source ${id}`}
-            className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold font-mono bg-zinc-900 text-white hover:bg-zinc-700 rounded-[3px] transition-colors duration-150"
+            className="citation-badge"
             data-testid={`citation-${id}`}
           >
             {id}
@@ -27,8 +27,6 @@ function CitationBadge({ ids, references, onJump }) {
 }
 
 function renderWithCitations(text, references, onJump) {
-  // Replace [n] or [n,m] with placeholder spans then render
-  // Strategy: split by regex, build elements
   if (!text) return null;
   const parts = [];
   const regex = /\[(\d+(?:\s*,\s*\d+)*)\]/g;
@@ -56,7 +54,6 @@ function renderWithCitations(text, references, onJump) {
   );
 }
 
-// Custom paragraph/li renderers that intercept text and add citation badges
 const buildMarkdownComponents = (references, onJump) => {
   const wrap = (children) => {
     if (typeof children === "string") {
@@ -84,6 +81,16 @@ const buildMarkdownComponents = (references, onJump) => {
   };
 };
 
+/* ── Section index badge colours (cycles) ── */
+const SECTION_COLORS = [
+  "from-violet-500 to-purple-600",
+  "from-blue-500 to-indigo-600",
+  "from-emerald-500 to-teal-600",
+  "from-orange-500 to-amber-600",
+  "from-rose-500 to-pink-600",
+  "from-cyan-500 to-sky-600",
+];
+
 export default function ReportView({ report, isStreaming }) {
   const [copied, setCopied] = useState(false);
 
@@ -105,9 +112,12 @@ export default function ReportView({ report, isStreaming }) {
     return (
       <div
         data-testid="report-placeholder"
-        className="border border-dashed border-zinc-200 bg-[#FAFAFA] h-full flex items-center justify-center rounded-md p-12 text-center"
+        className="border border-dashed border-zinc-200 bg-[#FAFAFA] h-full flex items-center justify-center rounded-xl p-12 text-center"
       >
         <div>
+          <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center mx-auto mb-4">
+            <FileText className="w-5 h-5 text-zinc-400" />
+          </div>
           <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-400 mb-2">
             {isStreaming ? "Synthesizing" : "Awaiting report"}
           </div>
@@ -122,84 +132,140 @@ export default function ReportView({ report, isStreaming }) {
   }
 
   const components = buildMarkdownComponents(report.references || [], onJump);
+  const takeaways = report.key_takeaways || [];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
       data-testid="report-view"
-      className="border border-zinc-200 bg-white rounded-md overflow-hidden"
+      className="report-card overflow-hidden"
     >
-      <div className="px-6 py-4 border-b border-zinc-200 bg-[#FAFAFA] flex flex-wrap items-center gap-3 justify-between">
-        <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-zinc-500" />
-          <span className="font-mono text-[11px] uppercase tracking-widest text-zinc-700">
-            Research Report
-          </span>
-          <span className="font-mono text-[10px] text-zinc-400 ml-2">
-            {report.search_iterations} iterations · {report.generation_time_sec}s ·{" "}
-            {report.references?.length || 0} sources
-          </span>
+      {/* ── Toolbar ── */}
+      <div className="report-toolbar">
+        <div className="flex items-center gap-3">
+          <div className="report-toolbar-icon">
+            <FileText className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="font-mono text-[11px] uppercase tracking-widest text-zinc-700 font-semibold">
+              Research Report
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            data-testid="export-md"
-            onClick={() => downloadFile(`neuroscout-${report.report_id.slice(0, 8)}.md`, md, "text/markdown")}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-zinc-200 hover:border-zinc-900 hover:bg-zinc-50 rounded-md transition-colors duration-150"
-          >
-            <Download className="w-3.5 h-3.5" />
-            .md
-          </button>
-          <button
-            data-testid="export-txt"
-            onClick={() => downloadFile(`neuroscout-${report.report_id.slice(0, 8)}.txt`, reportToText(report))}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-zinc-200 hover:border-zinc-900 hover:bg-zinc-50 rounded-md transition-colors duration-150"
-          >
-            <FileType className="w-3.5 h-3.5" />
-            .txt
-          </button>
-          <button
-            data-testid="copy-report"
-            onClick={onCopy}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-zinc-200 hover:border-zinc-900 hover:bg-zinc-50 rounded-md transition-colors duration-150"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-            {copied ? "Copied" : "Copy"}
-          </button>
+        <div className="flex items-center gap-3 text-xs text-zinc-400">
+          <span className="report-meta-pill">
+            <Zap className="w-3 h-3" /> {report.search_iterations} iterations
+          </span>
+          <span className="report-meta-pill">
+            <Clock className="w-3 h-3" /> {report.generation_time_sec}s
+          </span>
+          <span className="report-meta-pill">
+            <Database className="w-3 h-3" /> {report.references?.length || 0} sources
+          </span>
+          <div className="flex items-center gap-1.5 ml-2">
+            <button
+              data-testid="export-md"
+              onClick={() => downloadFile(`neuroscout-${report.report_id.slice(0, 8)}.md`, md, "text/markdown")}
+              className="report-action-btn"
+            >
+              <Download className="w-3.5 h-3.5" /> .md
+            </button>
+            <button
+              data-testid="export-txt"
+              onClick={() => downloadFile(`neuroscout-${report.report_id.slice(0, 8)}.txt`, reportToText(report))}
+              className="report-action-btn"
+            >
+              <FileType className="w-3.5 h-3.5" /> .txt
+            </button>
+            <button
+              data-testid="copy-report"
+              onClick={onCopy}
+              className="report-action-btn"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="px-6 md:px-10 py-8 report-prose">
-        <h1 className="font-display font-black text-3xl md:text-4xl tracking-tight text-zinc-900 mb-2">
-          {report.query}
-        </h1>
-        <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-400 mb-8">
+      {/* ── Body ── */}
+      <div className="px-6 md:px-10 py-10 report-prose">
+
+        {/* Title */}
+        <h1 className="report-title">{report.query}</h1>
+        <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-400 mb-10">
           Generated {new Date(report.created_at).toLocaleString()}
         </div>
 
-        <div className="border-l-2 border-zinc-900 pl-5 mb-10 bg-[#FAFAFA] py-4 pr-4 rounded-r">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 mb-2">
-            Executive Summary
-          </div>
+        {/* Executive Summary */}
+        <div className="executive-summary-block">
+          <div className="executive-summary-label">Executive Summary</div>
           <div className="text-base text-zinc-800 leading-relaxed">
             {renderWithCitations(report.executive_summary, report.references || [], onJump)}
           </div>
         </div>
 
+        {/* Sections */}
         {(report.sections || []).map((s, i) => (
-          <section key={i} className="mb-8" data-testid={`report-section-${i}`}>
-            <h2 className="font-display font-bold text-2xl text-zinc-900 mb-3">{s.heading}</h2>
-            <div className="text-zinc-800">
+          <motion.section
+            key={i}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05, duration: 0.25 }}
+            className="report-section"
+            data-testid={`report-section-${i}`}
+          >
+            <div className="report-section-header">
+              <div className={`report-section-index bg-gradient-to-br ${SECTION_COLORS[i % SECTION_COLORS.length]}`}>
+                {i + 1}
+              </div>
+              <h2 className="report-section-title">{s.heading}</h2>
+            </div>
+            <div className="report-section-body text-zinc-700">
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
                 {s.content || ""}
               </ReactMarkdown>
             </div>
-          </section>
+          </motion.section>
         ))}
 
-        <div className="mt-12 pt-8 border-t border-zinc-200" data-testid="references-list">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 mb-4">
+        {/* ── Key Takeaways Summary ── */}
+        {takeaways.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.35 }}
+            className="key-takeaways-block"
+            data-testid="key-takeaways"
+          >
+            <div className="key-takeaways-header">
+              <div className="key-takeaways-icon">
+                <Lightbulb className="w-4 h-4" />
+              </div>
+              <span className="key-takeaways-label">Key Takeaways</span>
+            </div>
+            <p className="key-takeaways-subtext">
+              The most important conclusions from this research — for readers in a hurry.
+            </p>
+            <ul className="key-takeaways-list">
+              {takeaways.map((t, i) => (
+                <li key={i} className="key-takeaway-item">
+                  <span className="key-takeaway-bullet" />
+                  <span className="text-zinc-800 leading-relaxed text-[0.9375rem]">
+                    {renderWithCitations(t, report.references || [], onJump)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
+
+        {/* References */}
+        <div className="mt-12 pt-8 border-t border-zinc-100" data-testid="references-list">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-400 mb-5">
             References ({report.references?.length || 0})
           </div>
           <ol className="space-y-3">
@@ -207,32 +273,29 @@ export default function ReportView({ report, isStreaming }) {
               <li
                 id={`ref-${r.id}`}
                 key={r.id}
-                className="flex gap-3 items-start scroll-mt-24"
+                className="flex gap-3 items-start scroll-mt-24 group"
                 data-testid={`reference-${r.id}`}
               >
-                <span className="font-mono text-xs font-bold text-zinc-900 bg-zinc-100 rounded px-1.5 py-0.5 mt-0.5 shrink-0">
-                  {r.id}
-                </span>
+                <span className="reference-badge">{r.id}</span>
                 <div className="min-w-0 flex-1">
                   <a
                     href={r.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-sm text-zinc-900 hover:underline break-words inline-flex items-start gap-1 group"
+                    className="text-sm text-zinc-800 hover:text-zinc-900 hover:underline break-words inline-flex items-start gap-1 font-medium transition-colors"
                   >
                     <span>{r.title}</span>
-                    <ExternalLink className="w-3 h-3 mt-1 opacity-50 group-hover:opacity-100 shrink-0" />
+                    <ExternalLink className="w-3 h-3 mt-1 opacity-40 group-hover:opacity-100 shrink-0 transition-opacity" />
                   </a>
-                  <div className="font-mono text-[10px] text-zinc-400 truncate mt-0.5">
-                    {r.url}
-                  </div>
+                  <div className="font-mono text-[10px] text-zinc-400 truncate mt-0.5">{r.url}</div>
                 </div>
               </li>
             ))}
           </ol>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-zinc-200">
+        {/* Disclaimer */}
+        <div className="mt-10 pt-6 border-t border-zinc-100">
           <div className="font-mono text-[10px] text-zinc-400 leading-relaxed">
             AI-generated. Verify critical claims independently. NeuroScout grounds every
             section in retrieved evidence but cannot guarantee absolute accuracy.

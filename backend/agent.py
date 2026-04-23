@@ -152,9 +152,15 @@ SYNTHESIZE_SYSTEM = (
     '  "executive_summary": "3-5 sentence overview with citations like [1].",\n'
     '  "sections": [\n'
     '    {"heading": "Section title", "content": "Markdown content with inline [n] citations.", "source_ids": [1,2]}\n'
+    "  ],\n"
+    '  "key_takeaways": [\n'
+    '    "Concise, actionable insight or key finding #1 (cite source if relevant, e.g. [1]).",\n'
+    '    "Concise insight #2.",\n'
+    '    "Concise insight #3."\n'
     "  ]\n"
     "}\n"
-    "Use 3-6 sections. Each section's source_ids must be the 1-indexed source numbers actually cited in its content."
+    "Use 3-6 sections. Each section's source_ids must be the 1-indexed source numbers actually cited in its content. "
+    "Provide 3-5 key_takeaways: short, punchy bullet-style sentences summarising the most important conclusions for a reader in a hurry."
 )
 
 
@@ -335,6 +341,7 @@ async def run_research(
         "query": query,
         "executive_summary": parsed.get("executive_summary", ""),
         "sections": parsed.get("sections", []),
+        "key_takeaways": parsed.get("key_takeaways", []),
         "references": references,
         "sub_questions": sub_questions,
         "search_iterations": iterations_used,

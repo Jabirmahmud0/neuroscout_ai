@@ -1,40 +1,70 @@
-# NeuroScout AI - Frontend 🎨
+# NeuroScout AI — Frontend
 
-This is the React-based frontend for **NeuroScout AI**. It provides a premium, interactive interface for conducting deep research and viewing synthesized reports.
+React 19 interface for the NeuroScout AI research agent.
 
-## 🚀 Quick Start
-
-1. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-2. **Configure Environment**:
-   Create a `.env` file:
-   ```env
-   REACT_APP_API_URL=http://localhost:8000
-   ```
-
-3. **Run Development Server**:
-   ```bash
-   npm start
-   ```
-
-## 🛠️ Key Technologies
-
-- **React 19**: Modern component-based architecture.
-- **Framer Motion**: Smooth animations and transitions.
-- **Lucide React**: Clean, consistent iconography.
-- **Tailwind CSS**: Utility-first styling with custom glassmorphism effects.
-- **Radix UI**: Accessible, unstyled primitives for complex components (Tabs, Dialogs, etc.).
-
-## 📂 Structure
-
-- `/src/components`: Reusable UI elements (Buttons, Cards, Modals).
-- `/src/pages`: Main application views (Home, Session Detail).
-- `/src/services`: API communication logic (SSE client, Axios).
-- `/src/hooks`: Custom React hooks for session management.
+> For the full project overview, architecture, and deployment guide, see the [Root README](../README.md).
 
 ---
 
-For full project documentation, including backend setup and architecture, see the [Root README](../README.md).
+## Quick Start
+
+```bash
+npm install
+echo "REACT_APP_BACKEND_URL=http://localhost:8000" > .env
+npm start
+```
+
+App runs on `http://localhost:3000`.
+
+---
+
+## Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `REACT_APP_BACKEND_URL` | ✅ | Full URL of the NeuroScout backend API |
+
+---
+
+## Tech Stack
+
+| Package | Purpose |
+|---|---|
+| `react` 19 | UI framework |
+| `framer-motion` | Animations & transitions |
+| `react-markdown` + `remark-gfm` | Markdown rendering in report sections |
+| `lucide-react` | Icon library |
+| `tailwindcss` | Utility-first styling |
+| `@radix-ui/*` | Accessible UI primitives |
+
+---
+
+## Source Structure
+
+```
+src/
+├── components/
+│   ├── AgentStream.jsx   # Live SSE step renderer (plan / search / reason / synth)
+│   ├── QueryInput.jsx    # Research query form
+│   ├── ReportView.jsx    # Structured report: summary, sections, key takeaways, refs
+│   └── Sidebar.jsx       # Session history panel
+├── pages/
+│   └── Dashboard.jsx     # Main layout
+├── lib/
+│   ├── api.js            # API client & SSE helpers
+│   ├── export.js         # .md / .txt export utilities
+│   └── utils.js
+├── hooks/                # Custom React hooks
+├── index.css             # Global design tokens & component styles
+└── App.js
+```
+
+---
+
+## Scripts
+
+| Command | Description |
+|---|---|
+| `npm start` | Start development server on port 3000 |
+| `npm test` | Run tests |
+| `npm run build` | Build production bundle to `build/` |

@@ -17,6 +17,14 @@ export function reportToMarkdown(report) {
     lines.push(s.content || "");
     lines.push("");
   });
+  if ((report.key_takeaways || []).length > 0) {
+    lines.push("## Key Takeaways");
+    lines.push("");
+    (report.key_takeaways || []).forEach((t) => {
+      lines.push(`- ${t}`);
+    });
+    lines.push("");
+  }
   lines.push("## References");
   lines.push("");
   (report.references || []).forEach((r) => {
