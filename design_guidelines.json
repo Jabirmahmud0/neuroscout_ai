@@ -1,0 +1,94 @@
+{
+  "theme": "light",
+  "archetype": "Archetype 4 (Swiss & High-Contrast)",
+  "emotion": "Objective, Authoritative, Rapid, Intelligent",
+  "typography": {
+    "headings": {
+      "family": "Chivo",
+      "weights": ["400", "700", "900"],
+      "classes": "font-sans tracking-tight"
+    },
+    "body": {
+      "family": "IBM Plex Sans",
+      "weights": ["400", "500"],
+      "classes": "font-sans"
+    },
+    "mono": {
+      "family": "IBM Plex Mono",
+      "weights": ["400"],
+      "classes": "font-mono text-sm tracking-tight"
+    },
+    "imports": [
+      "@import url('https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400&display=swap');"
+    ]
+  },
+  "colors": {
+    "background": "#FFFFFF",
+    "surface": "#FAFAFA",
+    "border": "#E4E4E7",
+    "text_primary": "#09090B",
+    "text_secondary": "#71717A",
+    "primary_action": "#09090B",
+    "primary_action_text": "#FAFAFA",
+    "agent_states": {
+      "plan": "#2563EB",
+      "search": "#D97706",
+      "observe": "#7C3AED",
+      "reason": "#db2777",
+      "synthesize": "#059669"
+    }
+  },
+  "spacing_and_layout": {
+    "container_padding": "p-8 md:p-12",
+    "gap_strategy": "gap-8 md:gap-12",
+    "sidebar_width": "w-64 md:w-72",
+    "grid": "grid-cols-1 md:grid-cols-12",
+    "card_padding": "p-6 md:p-8"
+  },
+  "component_rules": {
+    "buttons": "Square or slight rounding (rounded-md max). High contrast (black bg, white text for primary). Solid borders for secondary.",
+    "inputs": "Generous padding, large text. The main query input should be borderless with just a thick bottom border, text-2xl or text-3xl. Focus state must have a crisp 2px black bottom border.",
+    "cards": "Flat design. No soft drop shadows. Use 1px solid border (#E4E4E7) and stark background (#FFFFFF or #FAFAFA).",
+    "agent_stream_panel": "Use IBM Plex Mono. Show timestamps. Auto-scroll to bottom. Use specific colors for agent state badges.",
+    "report_view": "Prose typography, rich markdown support. Clear H1, H2 hierarchy. Inline citation badges as small pill-shaped superscripts."
+  },
+  "interactions": {
+    "hover": "Hover states must have higher contrast. Buttons invert or shift to darker grey.",
+    "loading": "Typewriter effect for streaming text. Blinking cursor at the end of the active stream.",
+    "transitions": "Fast, crisp transitions (150ms ease-out). No bouncy or slow animations."
+  },
+  "media_urls": {
+    "empty_state_graphic": null,
+    "brand_logo": null
+  },
+  "pages": {
+    "dashboard": {
+      "layout": "Control Room Grid",
+      "sections": [
+        {
+          "name": "Sidebar",
+          "content": "Brand logo, 'New Research' button, Session History list (Recent Queries) using truncated text."
+        },
+        {
+          "name": "Main Canvas - Empty State",
+          "content": "Massive centered text input for the research query. Subdued example chips below ('Investigate recent advancements in solid-state batteries', 'Summarize Q4 2025 AI agent market trends')."
+        },
+        {
+          "name": "Main Canvas - Active State",
+          "content": "Bento split. Left/Top (col-span-12 lg:col-span-4): Live Agent Stream (terminal-like). Right/Bottom (col-span-12 lg:col-span-8): Final Synthesized Report, incrementally building. References list below report as numbered cards."
+        }
+      ]
+    }
+  },
+  "instructions_to_main_agent": [
+    "Install lucide-react for icons (MagnifyingGlass, History, Download, Copy, BrainCircuit).",
+    "Install Framer Motion for the typewriter stream effect and subtle reveal of the report sections.",
+    "Implement the layout with a fixed sidebar and scrollable main content.",
+    "For the main query input, do NOT use standard Shadcn Input; build a custom large, border-bottom-only textarea or input that auto-expands.",
+    "Ensure the Live Stream panel uses monospace font, shows timestamps, and auto-scrolls to the newest entry.",
+    "For the final report, use a typography plugin or robust custom prose styles to format Markdown.",
+    "Implement inline citations as small rounded badges that link to the references list at the bottom.",
+    "Add 'data-testid' to all interactive elements (e.g., data-testid='query-input', data-testid='submit-research', data-testid='history-item', data-testid='export-md').",
+    "Use pure HTML/Tailwind for the main complex bento grids, avoid Shadcn Card if it restricts the layout flexibility."
+  ]
+}
