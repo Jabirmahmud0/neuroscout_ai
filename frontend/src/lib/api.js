@@ -26,7 +26,7 @@ export async function deleteSession(id) {
  * Calls onEvent for every parsed event object.
  * Returns the AbortController so the caller can cancel.
  */
-export function streamResearch({ query, maxIterations = 5, onEvent, onError, onClose }) {
+export function streamResearch({ query, mode = "balanced", maxIterations = 5, onEvent, onError, onClose }) {
   const controller = new AbortController();
 
   (async () => {
@@ -34,7 +34,7 @@ export function streamResearch({ query, maxIterations = 5, onEvent, onError, onC
       const resp = await fetch(`${API_BASE}/research/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, max_iterations: maxIterations }),
+        body: JSON.stringify({ query, mode, max_iterations: maxIterations }),
         signal: controller.signal,
       });
 

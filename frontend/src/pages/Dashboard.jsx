@@ -24,7 +24,7 @@ export default function Dashboard() {
     setError(null);
   };
 
-  const handleSubmit = useCallback((query) => {
+  const handleSubmit = useCallback(({ query, mode }) => {
     setEvents([]);
     setReport(null);
     setError(null);
@@ -33,7 +33,8 @@ export default function Dashboard() {
 
     controllerRef.current = streamResearch({
       query,
-      maxIterations: 5,
+      mode,
+      maxIterations: mode === "quick" ? 2 : mode === "deep" ? 6 : 4,
       onEvent: (evt) => {
         setEvents((prev) => [...prev, evt]);
         if (evt.type === "session" && evt.session_id) {

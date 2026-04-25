@@ -84,7 +84,7 @@ It uses a **ReAct-style agent loop** (Plan → Search → Fetch → Reason → S
 
 | Layer | Technology |
 |---|---|
-| **LLM** | Google Gemini 3.1 Pro Preview (`google-genai`) |
+| **LLM** | Google Gemini 3 Flash Preview (`google-genai`) |
 | **Web Search** | DuckDuckGo (`ddgs`) — no API key required |
 | **Backend Framework** | FastAPI + Uvicorn / Gunicorn |
 | **Async HTTP** | `httpx` |

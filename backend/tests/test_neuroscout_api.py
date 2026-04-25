@@ -65,7 +65,7 @@ def _run_stream(query: str, max_iterations: int = 3):
     url = f"{BASE_URL}/api/research/stream"
     with requests.post(
         url,
-        json={"query": query, "max_iterations": max_iterations},
+        json={"query": query, "mode": "balanced", "max_iterations": max_iterations},
         stream=True,
         timeout=SSE_TIMEOUT,
         headers={"Accept": "text/event-stream"},
@@ -84,7 +84,19 @@ class TestHealth:
         data = r.json()
         assert data["status"] == "ok"
         assert data["llm_configured"] is True
+        assert "metrics" in data
+        assert "cache" in data
         assert "ts" in data
+
+    def test_metrics(self):
+        r = requests.get(f"{BASE_URL}/api/metrics", timeout=15)
+        assert r.status_code == 200
+        data = r.json()
+        assert "runs" in data
+        assert "search" in data
+        assert "fetch" in data
+        assert "llm" in data
+        assert "cache" in data
 
 
 class TestValidation:
@@ -198,10 +210,12 @@ class TestResearchStream:
 
         # Required top-level fields
         assert report["query"] == cache["query"]
+        assert report.get("mode") == "balanced"
         assert isinstance(report.get("executive_summary"), str)
         assert len(report["executive_summary"]) > 0
         assert isinstance(report.get("sections"), list) and len(report["sections"]) >= 1
         assert isinstance(report.get("references"), list) and len(report["references"]) >= 1
+        assert isinstance(report.get("telemetry"), dict)
         assert isinstance(report.get("search_iterations"), int) and report["search_iterations"] >= 1
         assert isinstance(report.get("generation_time_sec"), (int, float))
         assert isinstance(report.get("created_at"), str)

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { BrainCircuit, Plus, History, Trash2, Loader2 } from "lucide-react";
-import { fetchSessions, deleteSession } from "../lib/api";
+import { BrainCircuit, History, Loader2, Plus, Trash2 } from "lucide-react";
+import { deleteSession, fetchSessions } from "../lib/api";
 
 export default function Sidebar({ activeSessionId, onSelectSession, onNewResearch, refreshKey }) {
   const [sessions, setSessions] = useState([]);
@@ -11,8 +11,8 @@ export default function Sidebar({ activeSessionId, onSelectSession, onNewResearc
     try {
       const data = await fetchSessions();
       setSessions(data);
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -22,14 +22,16 @@ export default function Sidebar({ activeSessionId, onSelectSession, onNewResearc
     load();
   }, [refreshKey]);
 
-  const handleDelete = async (e, id) => {
-    e.stopPropagation();
+  const handleDelete = async (event, id) => {
+    event.stopPropagation();
     try {
       await deleteSession(id);
-      setSessions((s) => s.filter((x) => x.session_id !== id));
-      if (activeSessionId === id) onSelectSession(null);
-    } catch (err) {
-      console.error(err);
+      setSessions((current) => current.filter((item) => item.session_id !== id));
+      if (activeSessionId === id) {
+        onSelectSession(null);
+      }
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -44,12 +46,8 @@ export default function Sidebar({ activeSessionId, onSelectSession, onNewResearc
             <BrainCircuit className="w-5 h-5 text-white" strokeWidth={2.2} />
           </div>
           <div>
-            <div className="font-display font-black text-lg leading-none text-zinc-900">
-              NeuroScout
-            </div>
-            <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 mt-1">
-              Research Agent
-            </div>
+            <div className="font-display font-black text-lg leading-none text-zinc-900">NeuroScout</div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 mt-1">Research Agent</div>
           </div>
         </div>
       </div>
@@ -79,30 +77,31 @@ export default function Sidebar({ activeSessionId, onSelectSession, onNewResearc
           <div className="px-4 py-3 text-xs text-zinc-400 italic">No sessions yet.</div>
         ) : (
           <ul className="flex flex-col gap-1">
-            {sessions.map((s) => (
-              <li key={s.session_id}>
+            {sessions.map((session) => (
+              <li key={session.session_id}>
                 <button
-                  data-testid={`history-item-${s.session_id}`}
-                  onClick={() => onSelectSession(s.session_id)}
+                  data-testid={`history-item-${session.session_id}`}
+                  onClick={() => onSelectSession(session.session_id)}
                   className={`group w-full text-left px-3 py-2 rounded-md flex items-start gap-2 transition-colors duration-150 ${
-                    activeSessionId === s.session_id
+                    activeSessionId === session.session_id
                       ? "bg-zinc-200 text-zinc-900"
                       : "hover:bg-zinc-100 text-zinc-700"
                   }`}
                 >
                   <span
                     className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
-                      s.status === "completed"
+                      session.status === "completed"
                         ? "bg-emerald-500"
-                        : s.status === "failed"
+                        : session.status === "failed"
                         ? "bg-red-500"
                         : "bg-amber-500"
                     }`}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm leading-snug line-clamp-2">{s.query}</div>
+                    <div className="text-sm leading-snug line-clamp-2">{session.query}</div>
                     <div className="font-mono text-[10px] text-zinc-400 mt-1">
-                      {new Date(s.created_at).toLocaleString(undefined, {
+                      {(session.mode || "balanced").toUpperCase()} -{" "}
+                      {new Date(session.created_at).toLocaleString(undefined, {
                         month: "short",
                         day: "numeric",
                         hour: "2-digit",
@@ -111,9 +110,9 @@ export default function Sidebar({ activeSessionId, onSelectSession, onNewResearc
                     </div>
                   </div>
                   <Trash2
-                    onClick={(e) => handleDelete(e, s.session_id)}
+                    onClick={(event) => handleDelete(event, session.session_id)}
                     className="w-3.5 h-3.5 text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    data-testid={`delete-session-${s.session_id}`}
+                    data-testid={`delete-session-${session.session_id}`}
                   />
                 </button>
               </li>
@@ -124,7 +123,7 @@ export default function Sidebar({ activeSessionId, onSelectSession, onNewResearc
 
       <div className="px-6 py-4 border-t border-zinc-200">
         <div className="font-mono text-[10px] text-zinc-400 leading-relaxed">
-          v1.0.0 · Gemini 3.1 Pro
+          v1.0.0 - Gemini 3 Flash Preview
           <br />
           Real-Time Web Research
         </div>

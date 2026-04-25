@@ -17,7 +17,8 @@ import uvicorn
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import AsyncGenerator, List, Optional
+from statistics import mean
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI, HTTPException
@@ -30,7 +31,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 # Import after env is loaded so API keys are available
-from agent import run_research  # noqa: E402
+from agent import get_cache_stats, run_research  # noqa: E402
 
 # ----- Mongo ----- #
 mongo_url = os.environ["MONGO_URL"]
@@ -40,6 +41,63 @@ db_client = AsyncIOMotorClient(
     connectTimeoutMS=5000
 )
 db = db_client[os.environ["DB_NAME"]]
+
+metrics_state: Dict[str, Any] = {
+    "runs_started": 0,
+    "runs_completed": 0,
+    "runs_failed": 0,
+    "search_calls": 0,
+    "search_cache_hits": 0,
+    "fetch_calls": 0,
+    "fetch_cache_hits": 0,
+    "llm_calls": 0,
+    "llm_stage_counts": {"plan": 0, "reason": 0, "synthesize": 0, "polish": 0, "repair": 0},
+    "avg_run_duration_sec": 0.0,
+    "avg_search_duration_ms": 0.0,
+    "avg_llm_duration_ms": 0.0,
+    "recent_run_durations_sec": [],
+    "recent_search_durations_ms": [],
+    "recent_llm_durations_ms": [],
+    "recent_source_counts": [],
+    "last_run_completed_at": None,
+}
+
+
+def _append_metric(name: str, value: float, limit: int = 100) -> None:
+    bucket = metrics_state[name]
+    bucket.append(value)
+    if len(bucket) > limit:
+        del bucket[0 : len(bucket) - limit]
+
+
+def _record_agent_metric(event: str, payload: Dict[str, Any]) -> None:
+    if event == "run_started":
+        metrics_state["runs_started"] += 1
+    elif event == "run_completed":
+        metrics_state["runs_completed"] += 1
+        metrics_state["last_run_completed_at"] = datetime.now(timezone.utc).isoformat()
+        _append_metric("recent_run_durations_sec", float(payload.get("duration_sec", 0)))
+        _append_metric("recent_source_counts", float(payload.get("source_count", 0)))
+    elif event == "search_completed":
+        metrics_state["search_calls"] += 1
+        if payload.get("cache_hit"):
+            metrics_state["search_cache_hits"] += 1
+        _append_metric("recent_search_durations_ms", float(payload.get("duration_ms", 0)))
+    elif event == "fetch_completed":
+        metrics_state["fetch_calls"] += int(payload.get("fetched_count", 0))
+        metrics_state["fetch_cache_hits"] += int(payload.get("cache_hits", 0))
+    elif event == "llm_call":
+        metrics_state["llm_calls"] += 1
+        stage = str(payload.get("stage") or "")
+        if stage in metrics_state["llm_stage_counts"]:
+            metrics_state["llm_stage_counts"][stage] += 1
+        _append_metric("recent_llm_durations_ms", float(payload.get("duration_ms", 0)))
+
+
+def _recompute_metric_averages() -> None:
+    metrics_state["avg_run_duration_sec"] = round(mean(metrics_state["recent_run_durations_sec"]), 2) if metrics_state["recent_run_durations_sec"] else 0.0
+    metrics_state["avg_search_duration_ms"] = round(mean(metrics_state["recent_search_durations_ms"]), 2) if metrics_state["recent_search_durations_ms"] else 0.0
+    metrics_state["avg_llm_duration_ms"] = round(mean(metrics_state["recent_llm_durations_ms"]), 2) if metrics_state["recent_llm_durations_ms"] else 0.0
 
 # ----- Lifespan ----- #
 @asynccontextmanager
@@ -64,11 +122,13 @@ api_router = APIRouter(prefix="/api")
 # ----- Schemas ----- #
 class ResearchRequest(BaseModel):
     query: str = Field(..., min_length=3, max_length=500)
-    max_iterations: int = Field(default=5, ge=3, le=8)
+    max_iterations: int = Field(default=5, ge=2, le=8)
+    mode: str = Field(default="balanced", pattern="^(quick|balanced|deep)$")
 
 class SessionSummary(BaseModel):
     session_id: str
     query: str
+    mode: Optional[str] = None
     status: str
     created_at: str
     completed_at: Optional[str] = None
@@ -80,9 +140,61 @@ class SessionDetail(SessionSummary):
 # ----- Routes ----- #
 @api_router.get("/health")
 async def health():
+    _recompute_metric_averages()
     return {
         "status": "ok",
         "llm_configured": bool(os.environ.get("GEMINI_API_KEY")),
+        "metrics": {
+            "runs_started": metrics_state["runs_started"],
+            "runs_completed": metrics_state["runs_completed"],
+            "runs_failed": metrics_state["runs_failed"],
+            "avg_run_duration_sec": metrics_state["avg_run_duration_sec"],
+        },
+        "cache": get_cache_stats(),
+        "ts": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@api_router.get("/metrics")
+async def metrics():
+    _recompute_metric_averages()
+    return {
+        "runs": {
+            "started": metrics_state["runs_started"],
+            "completed": metrics_state["runs_completed"],
+            "failed": metrics_state["runs_failed"],
+            "avg_duration_sec": metrics_state["avg_run_duration_sec"],
+            "last_completed_at": metrics_state["last_run_completed_at"],
+        },
+        "search": {
+            "calls": metrics_state["search_calls"],
+            "cache_hits": metrics_state["search_cache_hits"],
+            "cache_hit_rate": round(
+                metrics_state["search_cache_hits"] / metrics_state["search_calls"], 3
+            )
+            if metrics_state["search_calls"]
+            else 0.0,
+            "avg_duration_ms": metrics_state["avg_search_duration_ms"],
+        },
+        "fetch": {
+            "calls": metrics_state["fetch_calls"],
+            "cache_hits": metrics_state["fetch_cache_hits"],
+            "cache_hit_rate": round(
+                metrics_state["fetch_cache_hits"] / metrics_state["fetch_calls"], 3
+            )
+            if metrics_state["fetch_calls"]
+            else 0.0,
+        },
+        "llm": {
+            "calls": metrics_state["llm_calls"],
+            "by_stage": metrics_state["llm_stage_counts"],
+            "avg_duration_ms": metrics_state["avg_llm_duration_ms"],
+        },
+        "cache": get_cache_stats(),
+        "recent": {
+            "run_durations_sec": metrics_state["recent_run_durations_sec"][-10:],
+            "source_counts": metrics_state["recent_source_counts"][-10:],
+        },
         "ts": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -99,6 +211,7 @@ async def research_stream(req: ResearchRequest):
     await db.research_sessions.insert_one({
         "session_id": session_id,
         "query": req.query,
+        "mode": req.mode,
         "status": "pending",
         "created_at": created_at,
         "completed_at": None,
@@ -113,7 +226,7 @@ async def research_stream(req: ResearchRequest):
         error_msg: Optional[str] = None
 
         try:
-            async for event in run_research(req.query, req.max_iterations):
+            async for event in run_research(req.query, req.max_iterations, req.mode, observer=_record_agent_metric):
                 if event.get("type") == "final":
                     final_report = event.get("report")
                 elif event.get("type") == "error":
@@ -131,6 +244,8 @@ async def research_stream(req: ResearchRequest):
             "report": final_report,
             "error_message": error_msg,
         }
+        if final_report is None:
+            metrics_state["runs_failed"] += 1
         await db.research_sessions.update_one(
             {"session_id": session_id}, {"$set": update}
         )
@@ -153,7 +268,7 @@ async def list_sessions():
         cursor = db.research_sessions.find(
             {},
             {"_id": 0, "session_id": 1, "query": 1, "status": 1,
-             "created_at": 1, "completed_at": 1},
+             "mode": 1, "created_at": 1, "completed_at": 1},
         ).sort("created_at", -1).limit(20)
         return [SessionSummary(**doc) async for doc in cursor]
     except Exception as e:

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "mental-health-rumination",
+    "query": "Is overthinking a disorder or a symptom?",
+    "mode": "deep",
+    "expect": {
+      "min_sections": 3,
+      "must_include_headings": ["Definition", "Mechanism"],
+      "min_references": 3,
+      "require_conflicts_or_gaps": true
+    }
+  },
+  {
+    "id": "technical-comparison",
+    "query": "Compare LangGraph and CrewAI for production multi-step agents",
+    "mode": "balanced",
+    "expect": {
+      "min_sections": 3,
+      "must_include_headings": ["Comparison"],
+      "min_references": 3,
+      "require_conflicts_or_gaps": true
+    }
+  },
+  {
+    "id": "science-mechanism",
+    "query": "What explains the recent interest in solid-state batteries?",
+    "mode": "balanced",
+    "expect": {
+      "min_sections": 3,
+      "must_include_headings": ["Mechanism"],
+      "min_references": 3,
+      "require_conflicts_or_gaps": false
+    }
+  }
+]

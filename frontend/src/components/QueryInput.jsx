@@ -2,20 +2,23 @@ import { useRef, useState } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
 
 const EXAMPLES = [
-  "Investigate recent advancements in solid-state batteries",
-  "Summarize the state of AI agent frameworks in 2026",
-  "Compare LangGraph vs CrewAI for autonomous research agents",
-  "What are the latest breakthroughs in quantum error correction?",
+  "Why do people procrastinate despite knowing the consequences?",
+  "The neuroscience of social media addiction and dopamine reward loops",
+  "How does decision fatigue affect self-control and avoidance behavior?",
+  "Investigate the habit loop behind compulsive smartphone checking",
+  "Why do people stay in toxic relationships despite wanting to leave?",
+  "The neuroscience and behavioral economics of impulse buying",
 ];
 
 export default function QueryInput({ onSubmit, disabled }) {
   const [value, setValue] = useState("");
+  const [mode, setMode] = useState("balanced");
   const ref = useRef(null);
 
   const submit = () => {
     const v = value.trim();
     if (!v || disabled) return;
-    onSubmit(v);
+    onSubmit({ query: v, mode });
   };
 
   const handleKey = (e) => {
@@ -64,6 +67,33 @@ export default function QueryInput({ onSubmit, disabled }) {
         </button>
         <div className="font-mono text-[10px] text-zinc-400 mt-2 text-right">
           {value.length}/500
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-zinc-400 mb-3">
+          Research mode
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            ["quick", "Fast pass"],
+            ["balanced", "Best default"],
+            ["deep", "Maximum depth"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setMode(id)}
+              disabled={disabled}
+              className={`px-3 py-2 rounded-md text-sm border transition-colors duration-150 ${
+                mode === id
+                  ? "bg-zinc-900 text-white border-zinc-900"
+                  : "border-zinc-200 text-zinc-700 hover:border-zinc-900 hover:bg-zinc-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
