@@ -39,13 +39,18 @@ It doesn't generate. It **researches**. It hits live sources, extracts evidence,
 
 ### The 12-Point Quality Gate
 Before a report is finalised, NeuroScout checks for:
-- **Multi-Step Causal Chains** (A → B → C → D → Outcome)
-- **Identity Feedback Loops** (Identity → Behavior → Outcome → Reinforcement)
-- **Behavioral Economics Enforcement** (Requires 2+ distinct biases like Loss Aversion or Sunk Cost)
-- **Real-World Grounding** (Mandatory concrete examples, no purely academic fluff)
-- **Insight Simplicity** (One clear, non-obvious sentence a non-expert can understand)
-- **Source Authority** (Requires ≥2 research/clinical sources, caps general blogs at 50%)
-- **And 6 more...**
+1. **Multi-Step Causal Chains** — A → B → C → D → Outcome format present
+2. **Identity Feedback Loops** — Models Identity → Behavior → Outcome → Reinforcement
+3. **Behavioral Economics Enforcement** — Requires 2+ distinct biases (e.g., Loss Aversion, Sunk Cost)
+4. **Real-World Grounding** — Mandatory concrete examples; no purely academic fluff
+5. **Insight Simplicity** — One clear, non-obvious sentence a non-expert can understand
+6. **Source Authority** — Requires ≥2 research/clinical sources, caps general blogs at 50%
+7. **Escalation Patterns** — Tracks Small Avoidance → Delay → Major Self-Sabotage
+8. **Human Reality Layer** — Checks for social validation, FOMO, and emotional regulation loops
+9. **Mechanism Depth** — Every section must explicitly explain WHY, HOW, and WHAT effect it has
+10. **Cross-Domain Synthesis** — Must explicitly connect at least 2 distinct disciplines
+11. **Evidence Gap Depth** — Missing evidence is labeled with what, why, and what's needed
+12. **Required Architecture** — Forces a strict Neuro / Psych / Behavioral / Cross-Domain structure
 
 If the reasoning is weak, it repairs it. If a source is missing, it re-searches. The output is either grounded, or it keeps working.
 
