@@ -291,10 +291,19 @@ async def delete_session(session_id: str):
 
 app.include_router(api_router)
 
+cors_origins_str = os.environ.get("CORS_ORIGINS", "")
+if cors_origins_str:
+    origins = [o.strip() for o in cors_origins_str.split(",") if o.strip()]
+else:
+    origins = [
+        "http://localhost:3000",
+        "https://neuroscout-ai.vercel.app"
+    ]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
