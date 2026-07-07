@@ -219,6 +219,9 @@ async def research_stream(req: ResearchRequest):
     session_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
 
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready yet, please retry")
+
     await db.research_sessions.insert_one({
         "session_id": session_id,
         "query": req.query,
@@ -303,13 +306,12 @@ async def delete_session(session_id: str):
 app.include_router(api_router)
 
 cors_origins_str = os.environ.get("CORS_ORIGINS", "")
-if cors_origins_str:
-    origins = [o.strip() for o in cors_origins_str.split(",") if o.strip()]
-else:
-    origins = [
-        "http://localhost:3000",
-        "https://neuroscout-ai.vercel.app"
-    ]
+_extra_origins = [o.strip() for o in cors_origins_str.split(",") if o.strip()] if cors_origins_str else []
+origins = list({
+    "http://localhost:3000",
+    "https://neuroscout-ai.vercel.app",
+    *_extra_origins,
+})
 
 app.add_middleware(
     CORSMiddleware,
