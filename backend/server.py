@@ -128,6 +128,41 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# ----- CORS (must be added before routes so it wraps all responses) ----- #
+cors_origins_str = os.environ.get("CORS_ORIGINS", "")
+_extra_origins = [o.strip() for o in cors_origins_str.split(",") if o.strip()] if cors_origins_str else []
+ALLOWED_ORIGINS = list({
+    "http://localhost:3000",
+    "https://neuroscout-ai.vercel.app",
+    *_extra_origins,
+})
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Custom exception handler — ensures CORS headers are on ALL error responses
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in ALLOWED_ORIGINS:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+    logger.exception(f"Unhandled error on {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {exc}"},
+        headers=headers,
+    )
+
 api_router = APIRouter(prefix="/api")
 
 # ----- Schemas ----- #
@@ -278,6 +313,8 @@ async def research_stream(req: ResearchRequest):
 
 @api_router.get("/sessions", response_model=List[SessionSummary])
 async def list_sessions():
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready yet")
     try:
         cursor = db.research_sessions.find(
             {},
@@ -291,6 +328,8 @@ async def list_sessions():
 
 @api_router.get("/sessions/{session_id}", response_model=SessionDetail)
 async def get_session(session_id: str):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready yet")
     doc = await db.research_sessions.find_one({"session_id": session_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -298,6 +337,8 @@ async def get_session(session_id: str):
 
 @api_router.delete("/sessions/{session_id}")
 async def delete_session(session_id: str):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready yet")
     res = await db.research_sessions.delete_one({"session_id": session_id})
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -305,23 +346,9 @@ async def delete_session(session_id: str):
 
 app.include_router(api_router)
 
-cors_origins_str = os.environ.get("CORS_ORIGINS", "")
-_extra_origins = [o.strip() for o in cors_origins_str.split(",") if o.strip()] if cors_origins_str else []
-origins = list({
-    "http://localhost:3000",
-    "https://neuroscout-ai.vercel.app",
-    *_extra_origins,
-})
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=origins,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+# CORS middleware already added above before routes
 # (logging configured above lifespan)
+
 
 if __name__ == "__main__":
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
