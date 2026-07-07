@@ -21,10 +21,46 @@ from bs4 import BeautifulSoup
 from ddgs import DDGS
 from google import genai
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+# ----- Gemini key pool with round-robin rotation ----- #
+def _load_gemini_keys() -> List[str]:
+    """Load up to 3 Gemini API keys from env vars.
+
+    Supports two formats:
+    1. Comma-separated:  GEMINI_API_KEY=key1,key2,key3
+    2. Separate vars:    GEMINI_API_KEY + GEMINI_API_KEY_2 + GEMINI_API_KEY_3
+    """
+    primary = os.environ.get("GEMINI_API_KEY", "")
+    if "," in primary:
+        keys = [k.strip() for k in primary.split(",") if k.strip()]
+    else:
+        keys = [k for k in [
+            primary,
+            os.environ.get("GEMINI_API_KEY_2", ""),
+            os.environ.get("GEMINI_API_KEY_3", ""),
+        ] if k]
+    return keys
+
+GEMINI_KEYS: List[str] = _load_gemini_keys()
+GEMINI_API_KEY: str = GEMINI_KEYS[0] if GEMINI_KEYS else ""
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
 
-client: Optional[genai.Client] = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+# One genai.Client per key for true isolation
+_gemini_clients: List[genai.Client] = [
+    genai.Client(api_key=k) for k in GEMINI_KEYS
+]
+_key_index: int = 0  # current key pointer (round-robin)
+
+
+def _get_next_client() -> genai.Client:
+    """Return the next client in the round-robin pool."""
+    global _key_index
+    client = _gemini_clients[_key_index % len(_gemini_clients)]
+    _key_index = (_key_index + 1) % len(_gemini_clients)
+    return client
+
+
+# Legacy alias so existing `if client is None` checks still work
+client: Optional[genai.Client] = _gemini_clients[0] if _gemini_clients else None
 
 MAX_SUBQUESTIONS = 5
 MAX_RESULTS_PER_QUERY = 5
@@ -560,19 +596,37 @@ class SimpleChat:
         self.system_message = system_message
 
     async def send_message(self, text: str) -> str:
+        """Call Gemini with automatic key rotation on 429 rate-limit errors."""
+        if not _gemini_clients:
+            raise ValueError("No GEMINI_API_KEY configured")
+
         loop = asyncio.get_event_loop()
+        last_exc: Optional[Exception] = None
 
-        def _call():
-            if client is None:
-                raise ValueError("GEMINI_API_KEY not configured")
-            resp = client.models.generate_content(
-                model=self.model_name,
-                contents=text,
-                config={"system_instruction": self.system_message},
-            )
-            return resp.text
+        # Try every key in the pool before giving up
+        for attempt in range(len(_gemini_clients)):
+            current_client = _get_next_client()
 
-        return await loop.run_in_executor(None, _call)
+            def _call(c=current_client):
+                resp = c.models.generate_content(
+                    model=self.model_name,
+                    contents=text,
+                    config={"system_instruction": self.system_message},
+                )
+                return resp.text
+
+            try:
+                return await loop.run_in_executor(None, _call)
+            except Exception as exc:
+                err_str = str(exc).lower()
+                # Rotate on rate-limit (429) or quota errors; re-raise anything else
+                if "429" in err_str or "quota" in err_str or "rate" in err_str:
+                    last_exc = exc
+                    continue
+                raise
+
+        # All keys exhausted — surface the last rate-limit error
+        raise last_exc or RuntimeError("All Gemini API keys exhausted")
 
 
 def _new_chat(system_message: str) -> SimpleChat:
