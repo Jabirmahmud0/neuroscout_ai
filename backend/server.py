@@ -33,14 +33,9 @@ load_dotenv(ROOT_DIR / ".env")
 # Import after env is loaded so API keys are available
 from agent import get_cache_stats, run_research  # noqa: E402
 
-# ----- Mongo ----- #
-mongo_url = os.environ["MONGO_URL"]
-db_client = AsyncIOMotorClient(
-    mongo_url,
-    serverSelectionTimeoutMS=5000,
-    connectTimeoutMS=5000
-)
-db = db_client[os.environ["DB_NAME"]]
+# ----- Mongo (initialized in lifespan) ----- #
+db_client: Optional[AsyncIOMotorClient] = None
+db = None
 
 metrics_state: Dict[str, Any] = {
     "runs_started": 0,
@@ -99,15 +94,31 @@ def _recompute_metric_averages() -> None:
     metrics_state["avg_search_duration_ms"] = round(mean(metrics_state["recent_search_durations_ms"]), 2) if metrics_state["recent_search_durations_ms"] else 0.0
     metrics_state["avg_llm_duration_ms"] = round(mean(metrics_state["recent_llm_durations_ms"]), 2) if metrics_state["recent_llm_durations_ms"] else 0.0
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger("neuroscout")
+
 # ----- Lifespan ----- #
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup logic
+    global db_client, db
+    # Startup logic - connect to MongoDB asynchronously
     logger.info("Starting NeuroScout API")
+    mongo_url = os.environ["MONGO_URL"]
+    db_client = AsyncIOMotorClient(
+        mongo_url,
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
+    )
+    db = db_client[os.environ["DB_NAME"]]
+    logger.info("MongoDB client initialised")
     yield
     # Shutdown logic
     logger.info("Shutting down NeuroScout API")
-    db_client.close()
+    if db_client:
+        db_client.close()
 
 # ----- App ----- #
 app = FastAPI(
@@ -308,11 +319,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger("neuroscout")
+# (logging configured above lifespan)
 
 if __name__ == "__main__":
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
