@@ -1,129 +1,205 @@
-<div align="center">
+# NeuroScout AI
 
-# 🧠 NeuroScout AI
+NeuroScout AI is a full-stack research assistant that turns a question into a sourced, structured report. It plans research angles with Gemini, searches the live web, extracts evidence from retrieved pages, critiques gaps and conflicts, and streams progress to a React interface while the report is being assembled.
 
-**Most AI apps wrap an API and call it a product. This is not that.**
+Research sessions and completed reports are stored in MongoDB so they can be reopened or deleted from the interface. Reports can also be exported as Markdown or plain text.
 
-NeuroScout is an autonomous deep-research agent that actually *thinks*. It breaks down problems, pulls live web data, builds causal chains, validates its own conclusions against a 12-point quality gate, and repairs weak reasoning before it shows you anything.
-
-</div>
-
----
-
-## The Difference
-
-Give it a hard question. Something with no clean answer.
-
-> *"Why do people stay stuck in bad habits?"*
-
-A normal AI gives you a shallow listicle: *"Fear, lack of motivation, and dopamine cycles."*
-
-NeuroScout gives you a mechanism:
+## How it works
 
 ```text
-present bias → immediate reward preference → repeated avoidance →
-dopamine reinforcement → identity shift → long-term behavior lock-in
+Question
+  -> research plan
+  -> web search and page extraction
+  -> evidence critique and follow-up searches
+  -> synthesis and polishing
+  -> quality validation and targeted repair
+  -> cited report
 ```
 
-That's not an explanation. That's a structural breakdown of behavior.
+The validator checks report structure, causal and cross-domain reasoning, mechanism depth, source strength, real-world examples, evidence gaps, and several behavioral-science requirements. These checks guide a repair pass when the first draft is incomplete; they are quality heuristics, not a guarantee that every generated claim is correct.
 
----
+## Stack
 
-## How It Works
+| Area | Technology |
+| --- | --- |
+| Frontend | React 19, React Router, Tailwind CSS, Radix UI, Framer Motion |
+| Backend | FastAPI, Uvicorn, async Python |
+| LLM | Google Gemini through `google-genai` |
+| Search and extraction | DDGS, HTTPX, Beautiful Soup |
+| Persistence | MongoDB with Motor |
+| Streaming | Server-Sent Events over a streaming `fetch` response |
+| Deployment | Render backend configuration and Vercel frontend configuration |
 
-Every query runs through a ruthless reasoning loop:
+## Prerequisites
 
-`PLAN → SEARCH → FETCH → REASON → SYNTHESIZE → VALIDATE → REPAIR`
+- Python 3.11
+- Node.js 18 or newer and npm
+- A running MongoDB instance or MongoDB Atlas connection string
+- One or more Gemini API keys
 
-It doesn't generate. It **researches**. It hits live sources, extracts evidence, builds structured arguments, then subjects its own work to a brutal validation pipeline.
+## Local setup
 
-### The 12-Point Quality Gate
-Before a report is finalised, NeuroScout checks for:
-1. **Multi-Step Causal Chains** — A → B → C → D → Outcome format present
-2. **Identity Feedback Loops** — Models Identity → Behavior → Outcome → Reinforcement
-3. **Behavioral Economics Enforcement** — Requires 2+ distinct biases (e.g., Loss Aversion, Sunk Cost)
-4. **Real-World Grounding** — Mandatory concrete examples; no purely academic fluff
-5. **Insight Simplicity** — One clear, non-obvious sentence a non-expert can understand
-6. **Source Authority** — Requires ≥2 research/clinical sources, caps general blogs at 50%
-7. **Escalation Patterns** — Tracks Small Avoidance → Delay → Major Self-Sabotage
-8. **Human Reality Layer** — Checks for social validation, FOMO, and emotional regulation loops
-9. **Mechanism Depth** — Every section must explicitly explain WHY, HOW, and WHAT effect it has
-10. **Cross-Domain Synthesis** — Must explicitly connect at least 2 distinct disciplines
-11. **Evidence Gap Depth** — Missing evidence is labeled with what, why, and what's needed
-12. **Required Architecture** — Forces a strict Neuro / Psych / Behavioral / Cross-Domain structure
+Clone the repository, then configure and start the backend.
 
-If the reasoning is weak, it repairs it. If a source is missing, it re-searches. The output is either grounded, or it keeps working.
+### 1. Backend
 
----
+From the repository root:
 
-## The Stack
-
-| Layer | Technology |
-|---|---|
-| **LLM Reasoning** | Google Gemini (3.1 Pro/Flash) |
-| **Backend Engine** | FastAPI + async Python |
-| **Web Search** | DuckDuckGo API |
-| **Data Scraping** | httpx + BeautifulSoup |
-| **State & Memory** | MongoDB (Motor) |
-| **Frontend UI** | React + Tailwind CSS |
-| **Real-time Delivery** | Server-Sent Events (SSE) |
-
----
-
-## Running Locally
-
-**Requirements:** Python 3.9+, Node 18+, MongoDB, Gemini API key.
-
-**1. Backend**
-```bash
+```powershell
 cd backend
-python -m venv venv && source venv/bin/activate
+python -m venv venv
+.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-uvicorn server:app --reload
 ```
 
-**2. Frontend**
+On macOS or Linux, activate the environment with:
+
 ```bash
-cd frontend
-npm install && npm start
+source venv/bin/activate
 ```
 
-**3. Environment Variables**
+Create `backend/.env`:
 
-`backend/.env`:
-```env
-GEMINI_API_KEY=your_key_here
+```dotenv
 MONGO_URL=mongodb://localhost:27017
-DB_NAME=neuroscout_db
+DB_NAME=neuroscout
+GEMINI_API_KEY=your_gemini_api_key
 CORS_ORIGINS=http://localhost:3000
 ```
 
-`frontend/.env`:
-```env
+Then start the API:
+
+```powershell
+uvicorn server:app --reload --host 0.0.0.0 --port 8000
+```
+
+The API is available at `http://localhost:8000`, and interactive API documentation is at `http://localhost:8000/docs`.
+
+### 2. Frontend
+
+Open another terminal from the repository root:
+
+```powershell
+cd frontend
+npm install
+```
+
+Create `frontend/.env`:
+
+```dotenv
 REACT_APP_BACKEND_URL=http://localhost:8000
 ```
 
----
+Start the development server:
 
-## API Integration
-
-**POST** `/api/research/stream`
-
-```json
-{
-  "query": "Why do people self-sabotage?",
-  "max_iterations": 5
-}
+```powershell
+npm start
 ```
 
-Streams back the full reasoning process via SSE: plan, search queries, fetched content, intermediate reasoning, and the final report. You can watch it think in real-time.
+Open `http://localhost:3000`.
 
----
+## Configuration
 
-## The Honest Pitch
+### Backend variables
 
-This project started as a question: *Why does AI sound smart but fail on hard problems?*
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `MONGO_URL` | Yes | None | MongoDB connection string. |
+| `DB_NAME` | Yes | None | Database used for research sessions. |
+| `GEMINI_API_KEY` | Yes | None | Primary Gemini key. It may also contain up to three comma-separated keys. |
+| `GEMINI_API_KEY_2` | No | None | Additional key used for round-robin requests and quota fallback. |
+| `GEMINI_API_KEY_3` | No | None | Third key used for round-robin requests and quota fallback. |
+| `GEMINI_MODEL` | No | `gemini-3-flash-preview` | Gemini model name passed to the API. |
+| `CORS_ORIGINS` | No | None | Comma-separated extra browser origins. Localhost and the configured production frontend are already allowed. |
 
-The answer is that generation and reasoning are fundamentally different skills. An LLM naturally wants to predict the next word; it wants to please you. To get it to reason, you have to force it to show its work, check its logic, and reject its own lazy answers.
+### Frontend variable
 
-NeuroScout is built entirely around that second skill.
+| Variable | Required | Description |
+| --- | --- | --- |
+| `REACT_APP_BACKEND_URL` | Yes | Backend origin without the `/api` suffix. |
+
+Environment files and local launch scripts are ignored by Git. Never commit API keys or database credentials.
+
+## Research modes
+
+The interface exposes `quick`, `balanced`, and `deep` modes. The selected mode is sent to the planner and critic to influence research depth. API clients can also set `max_iterations` from 2 to 8; the frontend currently uses the backend default of 5.
+
+## API
+
+All application endpoints use the `/api` prefix.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/health` | Health, basic run statistics, LLM configuration state, and cache counts. |
+| `GET` | `/api/metrics` | In-process run, search, fetch, LLM, and cache metrics. |
+| `POST` | `/api/research/stream` | Start research and receive newline-delimited SSE events. |
+| `GET` | `/api/sessions` | List the 20 most recent sessions. |
+| `GET` | `/api/sessions/{session_id}` | Retrieve a saved session and report. |
+| `DELETE` | `/api/sessions/{session_id}` | Delete a saved session. |
+
+Example research request:
+
+```bash
+curl -N -X POST http://localhost:8000/api/research/stream \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Why do people procrastinate despite knowing the consequences?","mode":"balanced","max_iterations":5}'
+```
+
+The response is an SSE stream containing session, planning, search, fetch, reasoning, synthesis, final-report, error, and completion events.
+
+## Testing
+
+Run the backend unit tests from the repository root:
+
+```powershell
+python -m pytest backend/tests/test_agent_upgrades.py
+```
+
+The API integration suite expects the backend and MongoDB to already be running:
+
+```powershell
+python -m pytest backend/tests/test_neuroscout_api.py
+```
+
+Run frontend tests or create a production build with:
+
+```powershell
+cd frontend
+npm test
+npm run build
+```
+
+`backend/run_evaluation.py` runs live benchmark cases and therefore requires a configured Gemini key, internet access, and potentially several API calls:
+
+```powershell
+cd backend
+python run_evaluation.py
+```
+
+## Project structure
+
+```text
+backend/
+  agent.py              Research, extraction, synthesis, and validation pipeline
+  server.py             FastAPI routes, SSE streaming, MongoDB sessions, and metrics
+  run_evaluation.py     Live benchmark runner
+  tests/                Backend unit and API integration tests
+frontend/
+  src/components/       Research stream, input, report, and session UI
+  src/lib/              API streaming and report export helpers
+  src/pages/            Dashboard page
+render.yaml              Render backend service definition
+```
+
+## Deployment notes
+
+- `render.yaml` deploys the `backend` directory with Gunicorn and Uvicorn workers. Configure the backend environment variables in Render.
+- `frontend/vercel.json` provides the single-page application rewrite used by Vercel. Configure `REACT_APP_BACKEND_URL` at build time.
+- Add the deployed frontend origin to `CORS_ORIGINS` if it differs from the origin already allowed in `backend/server.py`.
+
+## Limitations
+
+- Research depends on third-party search results, source-page availability, and Gemini output.
+- Some sites block automated fetching, so a search result may not become usable evidence.
+- Metrics and search/fetch caches are stored in process memory and reset when the backend restarts. With multiple Gunicorn workers, each worker has independent metrics and caches.
+- Generated reports should be verified before they are used for medical, legal, financial, or other high-stakes decisions.
